@@ -1,6 +1,9 @@
 import tkinter
 import customtkinter
 import tkinter.messagebox
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
+
 
 
 ##########################
@@ -47,6 +50,31 @@ rotSpeedBounds = [rotSpeedBounds1[0], rotSpeedBounds1[1]]
 
 timeBounds = [0, 60]
 
+freqResult = 75
+forceResult = 250
+rotateResult = 9.81
+timeResult = 5
+
+#Make plots
+fig = Figure() #Frequency plot
+a = fig.add_subplot(111)
+t = arange(0.0, 3.0, 0.01)
+s = sin(pi*t)
+plot1.plot(t,s)
+
+canvas = FigureCanvasTkAgg(fig, master=ResultsTab)
+
+class ResultsTab(customtkinter.CTkTabview):
+    def __init__(self, master, **kwargs):
+        super().__init__(master, **kwargs)
+
+        #Create tabs
+        self.add("Freq. Results")
+        self.add("Force Results")
+        self.add("Rot. Speed Results")
+
+        #Add plots
+
 
 class App(customtkinter.CTk):
     def __init__(self):
@@ -56,15 +84,14 @@ class App(customtkinter.CTk):
         self.geometry(f"{1366}x{768}")
 
         # Grid Layout
-        self.grid_columnconfigure(1, weight=1)
-        self.grid_columnconfigure((2, 3, 4, 5, 6), weight=1)
-        self.grid_rowconfigure((0, 1, 2, 3, 4, 5), weight=1)
+        self.grid_columnconfigure((1, 2), weight=1)
+        self.grid_rowconfigure((0, 1, 2, 3), weight=0)
 
         # Radiobuttons
         self.radiobutton_frame = customtkinter.CTkFrame(self)
         self.radiobutton_frame.grid(row=0, column=0, rowspan=1, columnspan=1, padx=(20, 0), pady=(20, 0), sticky="nsew")
         self.radio_var = tkinter.IntVar(value=0)
-        self.label_radio_group = customtkinter.CTkLabel(master=self.radiobutton_frame, text="Cam Amplitude")
+        self.label_radio_group = customtkinter.CTkLabel(master=self.radiobutton_frame, text="Cam Amplitude", font=('CTkFont', 15))
         self.label_radio_group.grid(row=0, column=1, columnspan=2, padx=10, pady=(20, 20), sticky="ew")
         self.amp_1 = customtkinter.CTkRadioButton(master=self.radiobutton_frame, text="1mm",
                                                   variable=self.radio_var, value=0, command=self.setBounds)
@@ -80,92 +107,82 @@ class App(customtkinter.CTk):
         self.amp_custom.grid(row=1, column=3, padx=20, pady=10, sticky="n")
 
         # Frequency Slider
-        self.freq_frame = customtkinter.CTkFrame(self, fg_color="transparent")
-        self.freq_frame.grid(row=1, column=0, padx=(10, 0), pady=(20, 0), sticky="nsew")
-        self.freq_frame.grid_columnconfigure(1, weight=1)
-        self.freq_frame.grid_rowconfigure(2, weight=1)
+        self.slide_frame = customtkinter.CTkFrame(self)#, fg_color="transparent")
+        self.slide_frame.grid(row=1, column=0, rowspan=4, padx=(10, 0), pady=(20, 20), sticky="nsew")
+        self.slide_frame.grid_columnconfigure(1, weight=1)
+        self.slide_frame.grid_rowconfigure(2, weight=1)
+        self.subsysLabel = customtkinter.CTkLabel(self.slide_frame, text="Subsystems Control", font=('CTkFont', 15))
+        self.subsysLabel.grid(row=0, column=1, pady=(10,0))
         self.freq_var = "disabled"
-        self.freqSlider = customtkinter.CTkSlider(self.freq_frame, orientation="horizontal", state="disabled",
+        self.freqSlider = customtkinter.CTkSlider(self.slide_frame, orientation="horizontal", state="disabled",
                                                   number_of_steps=250, from_=freqBounds[0], to=freqBounds[1])
         self.freqSlider.bind("<ButtonRelease-1>", self.checkFreqSlider)
-        self.freqSlider.grid(row=1, column=1, columnspan=2, padx=(10, 10), pady=(10, 10), sticky="ew")
+        self.freqSlider.grid(row=1, column=1, columnspan=2, padx=(10, 10), pady=(20, 30), sticky="ew")
 
-        self.vibButton = customtkinter.CTkCheckBox(self.freq_frame, text="Enable\nVibration",
+        self.vibButton = customtkinter.CTkCheckBox(self.slide_frame, text="Enable\nVibration",
                                                    command=self.freqToggle, onvalue=1, offvalue=0)
-        self.vibButton.grid(row=1, column=0, padx=(10, 10), pady=(10, 10))
+        self.vibButton.grid(row=1, column=0, padx=(10, 10), pady=(20, 30))
 
-        self.freqEntry = customtkinter.CTkEntry(self.freq_frame, placeholder_text="Hz", state="disabled",
+        self.freqEntry = customtkinter.CTkEntry(self.slide_frame, placeholder_text="Hz", state="disabled",
                                                 validate='focusout', validatecommand=self.checkFreqEntry, width=50)
-        self.freqEntry.grid(row=1, column=3, padx=(10, 10), pady=(10, 10), sticky='w')
+        self.freqEntry.grid(row=1, column=3, padx=(10, 10), pady=(20, 30), sticky='w')
 
-        self.freqLabel = customtkinter.CTkLabel(self.freq_frame, text="Hz   ")
-        self.freqLabel.grid(row=1, column=4, padx=(0, 0), pady=(10, 10), sticky='w')
+        self.freqLabel = customtkinter.CTkLabel(self.slide_frame, text="Hz   ")
+        self.freqLabel.grid(row=1, column=4, padx=(0, 10), pady=(20, 30), sticky='w')
 
         # Force Slider
-        self.force_frame = customtkinter.CTkFrame(self, fg_color="transparent")
-        self.force_frame.grid(row=2, column=0, padx=(10, 0), pady=(20, 0), sticky="nsew")
-        self.force_frame.grid_columnconfigure(1, weight=1)
-        self.force_frame.grid_rowconfigure(3, weight=1)
         self.force_var = "disabled"
-        self.forceSlider = customtkinter.CTkSlider(self.force_frame, orientation="horizontal", state="disabled",
+        self.forceSlider = customtkinter.CTkSlider(self.slide_frame, orientation="horizontal", state="disabled",
                                                    number_of_steps=250, from_=forceBounds[0], to=forceBounds[1])
         self.forceSlider.bind("<ButtonRelease-1>", self.checkForceSlider)
-        self.forceSlider.grid(row=2, column=1, columnspan=2, padx=(10, 10), pady=(10, 10), sticky="ew")
+        self.forceSlider.grid(row=2, column=1, columnspan=2, padx=(10, 10), pady=(30, 30), sticky="ew")
 
-        self.compactButton = customtkinter.CTkCheckBox(self.force_frame, text="Enable\nCompaction",
+        self.compactButton = customtkinter.CTkCheckBox(self.slide_frame, text="Enable\nCompaction",
                                                        command=self.forceToggle, onvalue=1, offvalue=0)
-        self.compactButton.grid(row=2, column=0, padx=(10, 10), pady=(10, 10))
+        self.compactButton.grid(row=2, column=0, padx=(10, 10), pady=(30, 30))
 
-        self.forceEntry = customtkinter.CTkEntry(self.force_frame, placeholder_text="N", state="disabled",
+        self.forceEntry = customtkinter.CTkEntry(self.slide_frame, placeholder_text="N", state="disabled",
                                                  validate='focusout', validatecommand=self.checkForceEntry, width=50)
-        self.forceEntry.grid(row=2, column=3, padx=(10, 10), pady=(10, 10), sticky='w')
+        self.forceEntry.grid(row=2, column=3, padx=(10, 10), pady=(30, 30), sticky='w')
 
-        self.forceLabel = customtkinter.CTkLabel(self.force_frame, text="N    ")
-        self.forceLabel.grid(row=2, column=4, padx=(0, 0), pady=(10, 10), sticky='e')
+        self.forceLabel = customtkinter.CTkLabel(self.slide_frame, text="N    ")
+        self.forceLabel.grid(row=2, column=4, padx=(0, 10), pady=(30, 30), sticky='e')
 
         # Rotation Slider
-        self.rotate_frame = customtkinter.CTkFrame(self, fg_color="transparent")
-        self.rotate_frame.grid(row=3, column=0, padx=(10, 0), pady=(20, 0), sticky="nsew")
-        self.rotate_frame.grid_columnconfigure(1, weight=1)
-        self.rotate_frame.grid_rowconfigure(4, weight=1)
         self.rotate_var = "disabled"
-        self.rotateSlider = customtkinter.CTkSlider(self.rotate_frame, orientation="horizontal", state="disabled",
+        self.rotateSlider = customtkinter.CTkSlider(self.slide_frame, orientation="horizontal", state="disabled",
                                                     number_of_steps=250, from_=0, to=50)
         self.rotateSlider.bind("<ButtonRelease-1>", self.checkRotateSlider)
-        self.rotateSlider.grid(row=3, column=1, columnspan=2, padx=(10, 10), pady=(10, 10), sticky="ew")
+        self.rotateSlider.grid(row=3, column=1, columnspan=2, padx=(10, 10), pady=(30, 30), sticky="ew")
 
-        self.rotateButton = customtkinter.CTkCheckBox(self.rotate_frame, text="Enable\nRotation",
+        self.rotateButton = customtkinter.CTkCheckBox(self.slide_frame, text="Enable\nRotation",
                                                       command=self.rotateToggle, onvalue=1, offvalue=0)
-        self.rotateButton.grid(row=3, column=0, padx=(10, 10), pady=(10, 10))
+        self.rotateButton.grid(row=3, column=0, padx=(10, 10), pady=(30, 30))
 
-        self.rotateEntry = customtkinter.CTkEntry(self.rotate_frame, placeholder_text="rad/s", state="disabled",
+        self.rotateEntry = customtkinter.CTkEntry(self.slide_frame, placeholder_text="rad/s", state="disabled",
                                                   validate='focusout', validatecommand=self.checkRotateEntry, width=50)
-        self.rotateEntry.grid(row=3, column=3, padx=(10, 10), pady=(10, 10), sticky='w')
+        self.rotateEntry.grid(row=3, column=3, padx=(10, 10), pady=(30, 30), sticky='w')
 
-        self.rotateLabel = customtkinter.CTkLabel(self.rotate_frame, text="rad/s")
-        self.rotateLabel.grid(row=3, column=4, padx=(0, 0), pady=(10, 10), sticky='e')
+        self.rotateLabel = customtkinter.CTkLabel(self.slide_frame, text="rad/s")
+        self.rotateLabel.grid(row=3, column=4, padx=(0, 10), pady=(30, 30), sticky='e')
 
         # Run Time
-        self.time_frame = customtkinter.CTkFrame(self, fg_color="transparent")
-        self.time_frame.grid(row=4, column=0, padx=(10, 0), pady=(20, 0), sticky="nsew")
-        self.time_frame.grid_columnconfigure(1, weight=1)
-        self.time_frame.grid_rowconfigure(5, weight=1)
         self.time_var = "disabled"
-        self.timeSlider = customtkinter.CTkSlider(self.time_frame, orientation="horizontal", state="disabled",
+        self.timeSlider = customtkinter.CTkSlider(self.slide_frame, orientation="horizontal", state="disabled",
                                                   number_of_steps=250, from_=timeBounds[0], to=timeBounds[1])
         self.timeSlider.bind("<ButtonRelease-1>", self.checkTimeSlider)
-        self.timeSlider.grid(row=4, column=1, columnspan=2, padx=(10, 10), pady=(10, 10), sticky="ew")
+        self.timeSlider.grid(row=4, column=1, columnspan=2, padx=(10, 10), pady=(30, 20), sticky="ew")
 
-        self.timeButton = customtkinter.CTkCheckBox(self.time_frame, text="Enable\nRun Time", command=self.timeToggle,
+        self.timeButton = customtkinter.CTkCheckBox(self.slide_frame, text="Enable\nRun Time", command=self.timeToggle,
                                                     onvalue=1, offvalue=0)
-        self.timeButton.grid(row=4, column=0, padx=(10, 10), pady=(10, 10))
+        self.timeButton.grid(row=4, column=0, padx=(10, 10), pady=(30, 20))
 
-        self.timeEntry = customtkinter.CTkEntry(self.time_frame, placeholder_text="sec.", state="disabled",
+        self.timeEntry = customtkinter.CTkEntry(self.slide_frame, placeholder_text="sec.", state="disabled",
                                                 validate='focusout', validatecommand=self.checkTimeEntry, width=50)
-        self.timeEntry.grid(row=4, column=3, padx=(10, 10), pady=(10, 10), sticky='w')
+        self.timeEntry.grid(row=4, column=3, padx=(10, 10), pady=(30, 20), sticky='w')
 
-        self.timeLabel = customtkinter.CTkLabel(self.time_frame, text="sec. ")
-        self.timeLabel.grid(row=4, column=4, padx=(0, 0), pady=(10, 10), sticky='e')
+        self.timeLabel = customtkinter.CTkLabel(self.slide_frame, text="sec. ")
+        self.timeLabel.grid(row=4, column=4, padx=(0, 10), pady=(30, 20), sticky='e')
 
         # File Name Frame
         self.filename_frame = customtkinter.CTkFrame(self)
@@ -175,37 +192,60 @@ class App(customtkinter.CTk):
         self.filenameEntry = customtkinter.CTkEntry(master=self.filename_frame, placeholder_text='File_Name.csv',
                                                     validate='focusout', validatecommand=self.checkFilename, width=300, height=30)
         self.filenameEntry.grid(row=1, column=0, padx=10, pady=(5, 20), sticky='nsew', columnspan=2)
-        self.filenameLabel = customtkinter.CTkLabel(self.filename_frame, text='File Name')
+        self.filenameLabel = customtkinter.CTkLabel(self.filename_frame, text='File Name', font=('CTkFont', 15))
         self.filenameLabel.grid(row=0, column=0, padx=10, pady=(20, 5), sticky='sw')
         self.saveData_var = tkinter.IntVar(value=0)
         self.fileButtonSave = customtkinter.CTkRadioButton(master=self.filename_frame, text="Save Data",
                                                            variable=self.saveData_var, value=0, command=self.saveFile)
-        self.fileButtonSave.grid(row=2, column=0, padx=15, pady=5, sticky='nw')
+        self.fileButtonSave.grid(row=2, column=0, padx=15, pady=(10, 20), sticky='nw')
         self.fileButtonNoSave = customtkinter.CTkRadioButton(master=self.filename_frame, text="Run Without Saving",
                                                              variable=self.saveData_var, value=1, command=self.saveFile)
-        self.fileButtonNoSave.grid(row=2, column=1, padx=10, pady=5, sticky='nw')
+        self.fileButtonNoSave.grid(row=2, column=1, padx=10, pady=(10, 20), sticky='nw')
 
         #Results Frame
         self.results_frame = customtkinter.CTkFrame(self)
         self.results_frame.grid(row=1, column=1, rowspan=1, columnspan=1, padx=(20, 0), pady=(20, 0), sticky="nsew")
+        measured_freq = 'Measured frequency: ' + str(freqResult) + 'Hz'
+        self.resultsLabel_freq = customtkinter.CTkLabel(master=self.results_frame, text=measured_freq)
+        self.resultsLabel_freq.grid(row=0, column=0, padx=5, pady=10, sticky='nw')
+
+        measured_force = 'Measured force: ' + str(forceResult) + 'N'
+        self.resultsLabel_force = customtkinter.CTkLabel(master=self.results_frame, text=measured_force)
+        self.resultsLabel_force.grid(row=1, column=0, padx=5, pady=10, sticky='nw')
+
+        measured_rotation = "Measured rotation speed: " + str(rotateResult) + "rad/s"
+        self.resultsLabel_rotate = customtkinter.CTkLabel(master=self.results_frame, text=measured_rotation)
+        self.resultsLabel_rotate.grid(row=2, column=0, padx=5, pady=10, sticky='nw')
+
+        measured_time = "Measured run time: " + str(timeResult) + "sec."
+        self.resultsLabel_runTime = customtkinter.CTkLabel(master=self.results_frame, text=measured_time)
+        self.resultsLabel_runTime.grid(row=3, column=0, padx=5, pady=10, sticky='nw')
 
     # Functions to set bounds due to amplitude
     def setBounds(self):
         global freqBounds, forceBounds, rotSpeedBounds
         radio_var = self.radio_var.get()
+        self.freqEntry.delete(0, len(self.freqEntry.get()))
+        self.forceEntry.delete(0, len(self.forceEntry.get()))
+        self.rotateEntry.delete(0, len(self.rotateEntry.get()))
+        self.timeEntry.delete(0, len(self.timeEntry.get()))
         if radio_var == 0:
+            amp = '1mm'
             freqBounds = [freqBounds1[0], freqBounds1[1]]
             forceBounds = [forceBounds1[0], forceBounds1[1]]
             rotSpeedBounds = [rotSpeedBounds1[0], rotSpeedBounds1[1]]
         elif radio_var == 1:
+            amp = '0.6mm'
             freqBounds = [freqBounds06[0], freqBounds06[1]]
             forceBounds = [forceBounds06[0], forceBounds06[1]]
             rotSpeedBounds = [rotSpeedBounds06[0], rotSpeedBounds06[1]]
         elif radio_var == 2:
+            amp = '0.4mm'
             freqBounds = [freqBounds04[0], freqBounds04[1]]
             forceBounds = [forceBounds04[0], forceBounds04[1]]
             rotSpeedBounds = [rotSpeedBounds04[0], rotSpeedBounds04[1]]
         elif radio_var == 3:
+            amp = 'custom'
             freqBounds = [freqBoundsCustom[0], freqBoundsCustom[1]]
             forceBounds = [forceBoundsCustom[0], forceBoundsCustom[1]]
             rotSpeedBounds = [rotSpeedBoundsCustom[0], rotSpeedBoundsCustom[1]]
@@ -215,9 +255,10 @@ class App(customtkinter.CTk):
         self.freqSlider.configure(number_of_steps=250, from_=freqBounds[0], to=freqBounds[1])
         self.forceSlider.configure(number_of_steps=250, from_=forceBounds[0], to=forceBounds[1])
         self.rotateSlider.configure(number_of_steps=250, from_=rotSpeedBounds[0], to=rotSpeedBounds[1])
+        print('Subsystem bounds for ' + amp + ' amplitude')
         print('freqBounds:[' + str(freqBounds[0]) + ', ' + str(freqBounds[1]) + ']')
         print('forceBounds:[' + str(forceBounds[0]) + ', ' + str(forceBounds[1]) + ']')
-        print('rotSpeedBounds:[' + str(rotSpeedBounds[0]) + ', ' + str(rotSpeedBounds[1]) + ']')
+        print('rotSpeedBounds:[' + str(rotSpeedBounds[0]) + ', ' + str(rotSpeedBounds[1]) + ']\n')
 
     def saveFile(self):
         global fileName
