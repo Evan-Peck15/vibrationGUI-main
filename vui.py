@@ -3,6 +3,8 @@ import customtkinter
 import tkinter.messagebox
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
+import numpy as np
+import time
 
 
 
@@ -27,7 +29,7 @@ from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationTool
 # Initialize entry values when activated----DONE (workaround I think, idk I forgot)
 # Add opening window w/ images, manual/automatic
 
-customtkinter.set_appearance_mode("Dark")
+customtkinter.set_appearance_mode("dark")
 customtkinter.set_default_color_theme("blue")
 
 freqBounds1 = [50, 100]
@@ -55,14 +57,7 @@ forceResult = 250
 rotateResult = 9.81
 timeResult = 5
 
-#Make plots
-fig = Figure() #Frequency plot
-a = fig.add_subplot(111)
-t = arange(0.0, 3.0, 0.01)
-s = sin(pi*t)
-plot1.plot(t,s)
 
-canvas = FigureCanvasTkAgg(fig, master=ResultsTab)
 
 class ResultsTab(customtkinter.CTkTabview):
     def __init__(self, master, **kwargs):
@@ -72,6 +67,25 @@ class ResultsTab(customtkinter.CTkTabview):
         self.add("Freq. Results")
         self.add("Force Results")
         self.add("Rot. Speed Results")
+
+        self.forceResultsLabel = customtkinter.CTkLabel(master=self.tab("Force Results"), text="Force Plot Here")
+        self.forceResultsLabel.grid(row=0, column=0, padx=20, pady=10)
+        self.rotateResultsLabel = customtkinter.CTkLabel(master=self.tab("Rot. Speed Results"),
+                                                         text="Rot. Speed Plot Here")
+        self.rotateResultsLabel.grid(row=0, column=0, padx=20, pady=10)
+
+        #Make plots
+        # Make plots
+        fig = Figure(figsize=(2, 2))  # Frequency plot
+        freqPlot = fig.add_subplot(111)
+        x = np.arange(0.0, 3.0, 0.01)
+        y = np.sin(np.pi * x)
+        freqPlot.plot(x, y)
+        freqPlot.set(xlabel='Time [sec.]', ylabel='Freq. [Hz]')
+
+        canvas = FigureCanvasTkAgg(fig, master=self.tab("Freq. Results"))
+        canvas.draw()
+        canvas.get_tk_widget().grid(row=1, column=2, padx=10, pady=10, sticky='nsew')
 
         #Add plots
 
@@ -89,7 +103,7 @@ class App(customtkinter.CTk):
 
         # Radiobuttons
         self.radiobutton_frame = customtkinter.CTkFrame(self)
-        self.radiobutton_frame.grid(row=0, column=0, rowspan=1, columnspan=1, padx=(20, 0), pady=(20, 0), sticky="nsew")
+        self.radiobutton_frame.grid(row=0, column=0, rowspan=1, columnspan=1, padx=(10, 0), pady=(20, 0), sticky="nsew")
         self.radio_var = tkinter.IntVar(value=0)
         self.label_radio_group = customtkinter.CTkLabel(master=self.radiobutton_frame, text="Cam Amplitude", font=('CTkFont', 15))
         self.label_radio_group.grid(row=0, column=1, columnspan=2, padx=10, pady=(20, 20), sticky="ew")
@@ -204,22 +218,49 @@ class App(customtkinter.CTk):
 
         #Results Frame
         self.results_frame = customtkinter.CTkFrame(self)
+        self.results_frame.grid_columnconfigure((0,1), weight=0)
+        self.results_frame.grid_rowconfigure((0, 1), weight=0)
         self.results_frame.grid(row=1, column=1, rowspan=1, columnspan=1, padx=(20, 0), pady=(20, 0), sticky="nsew")
-        measured_freq = 'Measured frequency: ' + str(freqResult) + 'Hz'
-        self.resultsLabel_freq = customtkinter.CTkLabel(master=self.results_frame, text=measured_freq)
-        self.resultsLabel_freq.grid(row=0, column=0, padx=5, pady=10, sticky='nw')
+        self.resultsFrameLabel = customtkinter.CTkLabel(master=self.results_frame, text='Measured Results Printout', font=('CTkFont', 15))
+        self.resultsFrameLabel.grid(row=0, column=1, padx=5, pady=(10,20), sticky='ew')
 
-        measured_force = 'Measured force: ' + str(forceResult) + 'N'
-        self.resultsLabel_force = customtkinter.CTkLabel(master=self.results_frame, text=measured_force)
-        self.resultsLabel_force.grid(row=1, column=0, padx=5, pady=10, sticky='nw')
+        measured_freq = 'Measured frequency:           ' + str(freqResult) + 'Hz\n'
+        # self.resultsLabel_freq = customtkinter.CTkLabel(master=self.results_frame, text=measured_freq)
+        # self.resultsLabel_freq.grid(row=1, column=0, padx=5, pady=10, sticky='nw')
+        #
+        measured_force = 'Measured force:                    ' + str(forceResult) + 'N\n'
+        # self.resultsLabel_force = customtkinter.CTkLabel(master=self.results_frame, text=measured_force)
+        # self.resultsLabel_force.grid(row=2, column=0, padx=5, pady=10, sticky='nw')
+        #
+        measured_rotation = "Measured rotation speed:   " + str(rotateResult) + "rad/s\n"
+        # self.resultsLabel_rotate = customtkinter.CTkLabel(master=self.results_frame, text=measured_rotation)
+        # self.resultsLabel_rotate.grid(row=3, column=0, padx=5, pady=10, sticky='nw')
+        #
+        measured_time = "Measured run time:               " + str(timeResult) + "sec."
+        # self.resultsLabel_runTime = customtkinter.CTkLabel(master=self.results_frame, text=measured_time)
+        # self.resultsLabel_runTime.grid(row=4, column=0, padx=5, pady=10, sticky='nw')
 
-        measured_rotation = "Measured rotation speed: " + str(rotateResult) + "rad/s"
-        self.resultsLabel_rotate = customtkinter.CTkLabel(master=self.results_frame, text=measured_rotation)
-        self.resultsLabel_rotate.grid(row=2, column=0, padx=5, pady=10, sticky='nw')
+        #Print Results Using Text Box
+        self.resultsFrameText = customtkinter.CTkTextbox(master=self.results_frame, width=250)
+        self.resultsFrameText.grid(row=1, column=0, padx=10, pady=10)
+        self.resultsFrameText.insert("0.0", measured_freq+measured_force+measured_rotation+measured_time)
 
-        measured_time = "Measured run time: " + str(timeResult) + "sec."
-        self.resultsLabel_runTime = customtkinter.CTkLabel(master=self.results_frame, text=measured_time)
-        self.resultsLabel_runTime.grid(row=3, column=0, padx=5, pady=10, sticky='nw')
+        #Results plots tabs
+        self.tab_view = ResultsTab(master=self.results_frame)
+        self.tab_view.grid(row=1, column=2, rowspan=4, padx=10, pady=10, sticky='nw')
+
+        #Run/Stop Button
+        self.button_frame = customtkinter.CTkFrame(self, fg_color='transparent')
+        self.button_frame.grid(row=3, column=1, columnspan=2, padx=10, pady=10)
+        self.runButton = customtkinter.CTkButton(master=self.button_frame, width=250, height=100, corner_radius=25, fg_color='green',
+                                                 border_color='#006400', hover_color='#228B22', border_width=5, font=('CTkFont', 20),
+                                                 text='RUN', command=self.runButtonFunc)
+        self.runButton.grid(row=3, column=1, padx=10, pady=10, sticky='nw')
+
+        self.stopButton = customtkinter.CTkButton(master=self.button_frame, width=250, height=100, corner_radius=25, fg_color='#EE2C2C',
+                                                  border_color='#B22222', hover_color='#FF3030', border_width=5, font=('CTkFont', 20),
+                                                  text='STOP', command=self.stopButtonFunc, state='disabled')
+        self.stopButton.grid(row=3, column=2, padx=10, pady=10, sticky='nw')
 
     # Functions to set bounds due to amplitude
     def setBounds(self):
@@ -444,6 +485,18 @@ class App(customtkinter.CTk):
 
     def checkFilename(self):
         return True
+
+    def runButtonFunc(self):
+        #Start all subsystems
+        self.runButton.configure(state='disabled')
+        self.stopButton.configure(state='normal', hover=True)
+        return
+
+    def stopButtonFunc(self):
+        #Stop all subsystems
+        self.stopButton.configure(state='disabled')
+        self.runButton.configure(state='normal', hover=True)
+        return
 if __name__ == "__main__":
     app = App()
     app.mainloop()
