@@ -76,7 +76,7 @@ class ResultsTab(customtkinter.CTkTabview):
 
         #Make plots
         # Make plots
-        fig = Figure(figsize=(2, 2))  # Frequency plot
+        fig = Figure(figsize=(8, 8))  # Frequency plot
         freqPlot = fig.add_subplot(111)
         x = np.arange(0.0, 3.0, 0.01)
         y = np.sin(np.pi * x)
@@ -85,9 +85,23 @@ class ResultsTab(customtkinter.CTkTabview):
 
         canvas = FigureCanvasTkAgg(fig, master=self.tab("Freq. Results"))
         canvas.draw()
-        canvas.get_tk_widget().grid(row=1, column=2, padx=10, pady=10, sticky='nsew')
+        canvas.get_tk_widget().pack(fill='both', padx=10, pady=10)
 
         #Add plots
+
+
+class ToplevelWindow(customtkinter.CTkToplevel):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.geometry("600x500")
+        # self.grid_columnconfigure(0, weight=1)
+        # self.grid_rowconfigure(0, weight=1)
+        # self.resultsWindowFrame = customtkinter.CTkFrame(master=self)
+        # self.resultsWindowFrame.grid(row=0, column=0, padx=10, pady=10, sticky='nsew')
+
+        self.tab_view = ResultsTab(master=self)
+        self.tab_view.pack(fill='both', expand=True, padx=10, pady=10)
+
 
 
 class App(customtkinter.CTk):
@@ -246,8 +260,8 @@ class App(customtkinter.CTk):
         self.resultsFrameText.insert("0.0", measured_freq+measured_force+measured_rotation+measured_time)
 
         #Results plots tabs
-        self.tab_view = ResultsTab(master=self.results_frame)
-        self.tab_view.grid(row=1, column=2, rowspan=4, padx=10, pady=10, sticky='nw')
+        #self.tab_view = ResultsTab(master=self.results_frame)
+        #self.tab_view.grid(row=1, column=2, rowspan=4, padx=10, pady=10, sticky='nw')
 
         #Run/Stop Button
         self.button_frame = customtkinter.CTkFrame(self, fg_color='transparent')
@@ -262,6 +276,7 @@ class App(customtkinter.CTk):
                                                   text='STOP', command=self.stopButtonFunc, state='disabled')
         self.stopButton.grid(row=3, column=2, padx=10, pady=10, sticky='nw')
 
+        self.resultsWindow = None
     # Functions to set bounds due to amplitude
     def setBounds(self):
         global freqBounds, forceBounds, rotSpeedBounds
@@ -496,7 +511,19 @@ class App(customtkinter.CTk):
         #Stop all subsystems
         self.stopButton.configure(state='disabled')
         self.runButton.configure(state='normal', hover=True)
+        self.openResultsWindow()
         return
+
+    def openResultsWindow(self):
+        if self.resultsWindow is None or not self.resultsWindow.winfo_exists():
+            self.resultsWindow = ToplevelWindow(self)
+            self.resultsWindow.focus()
+
+        else:
+            self.resultsWindow.focus()
+
+
+
 if __name__ == "__main__":
     app = App()
     app.mainloop()
