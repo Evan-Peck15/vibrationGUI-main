@@ -5,6 +5,7 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 import numpy as np
 import time
+import serial
 
 
 
@@ -28,6 +29,9 @@ import time
 # Get feedback on color pallet?
 # Initialize entry values when activated----DONE (workaround I think, idk I forgot)
 # Add opening window w/ images, manual/automatic
+# Fix force entry check value
+# Set slider to change to mid value w/ invalid entry
+# Change rotation speed to enable rotation and enable rotation oscillation/oscillation speed
 
 customtkinter.set_appearance_mode("dark")
 customtkinter.set_default_color_theme("blue")
@@ -57,7 +61,7 @@ forceResult = 250
 rotateResult = 9.81
 timeResult = 5
 
-
+clearcore = serial.Serial('COM3', 9600)
 
 class ResultsTab(customtkinter.CTkTabview):
     def __init__(self, master, **kwargs):
@@ -505,6 +509,7 @@ class App(customtkinter.CTk):
         #Start all subsystems
         self.runButton.configure(state='disabled')
         self.stopButton.configure(state='normal', hover=True)
+        self.sendToClearcore()
         return
 
     def stopButtonFunc(self):
@@ -521,6 +526,9 @@ class App(customtkinter.CTk):
 
         else:
             self.resultsWindow.focus()
+
+    def sendToClearcore(self):
+        clearcore.write(str.encode("Freq:"+str(freqVal)+",Force:"+str(forceVal)+",Rotate:"+str(ifRotate)+",Oscilate:,"+str(oscilFreq))) #Need another comma to end string?
 
 
 
