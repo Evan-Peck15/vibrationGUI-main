@@ -4,8 +4,10 @@ import tkinter.messagebox
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 import numpy as np
+from openpyxl import Workbook
+from openpyxl.styles import Alignment
 import time
-import serial
+import re
 
 
 
@@ -18,20 +20,13 @@ import serial
 ##########################
 
 ###### NOTES ########
-# Adjust to actual pixel size of mini PC monitor----Set pixel size
-# Adjust Cam Amplitude frame----DONE
-# Adjust slider to be uniform length
-# Reduce width of entry boxes
-# Connect entry box value with slider value----DONE
-# Set slider bar limits and increments----DONE
 # Save values as variables
 # Add AutoLiv and UofU images
 # Get feedback on color pallet?
-# Initialize entry values when activated----DONE (workaround I think, idk I forgot)
 # Add opening window w/ images, manual/automatic
-# Fix force entry check value
-# Set slider to change to mid value w/ invalid entry
-# Change rotation speed to enable rotation and enable rotation oscillation/oscillation speed
+# Find frequency of rotation direction change
+# Error message for invalid filename
+# Fix errors in filesave if not all subsystems are active
 
 customtkinter.set_appearance_mode("dark")
 customtkinter.set_default_color_theme("blue")
@@ -61,43 +56,90 @@ forceResult = 250
 rotateResult = 9.81
 timeResult = 5
 
-clearcore = serial.Serial('COM3', 9600)
+#Temp measurements
+t = np.arange(0.0, 3.0, 0.01)
+freqMeasures = np.sin(np.pi * t) + 80
+forceMeasures = np.cos(np.pi * t)+150
+rotationMeasures = 9.8*np.sin(np.pi * t*5)
+maxFreq = max(freqMeasures)
+maxForce = max(forceMeasures)
+maxRotation = max(rotationMeasures)
+maxTime = max(t)
+
 
 class ResultsTab(customtkinter.CTkTabview):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
 
+        global t, freqMeasures, forceMeasures, rotationMeasures
+
         #Create tabs
+        self.add("Measured Results")
         self.add("Freq. Results")
         self.add("Force Results")
         self.add("Rot. Speed Results")
 
-        self.forceResultsLabel = customtkinter.CTkLabel(master=self.tab("Force Results"), text="Force Plot Here")
-        self.forceResultsLabel.grid(row=0, column=0, padx=20, pady=10)
-        self.rotateResultsLabel = customtkinter.CTkLabel(master=self.tab("Rot. Speed Results"),
-                                                         text="Rot. Speed Plot Here")
-        self.rotateResultsLabel.grid(row=0, column=0, padx=20, pady=10)
+        #Insert results in tabs
+        measured_freq = 'Measured frequency:               ' + str(freqResult) + 'Hz\n\n'
+        measured_force = 'Measured force:                        ' + str(forceResult) + 'N\n\n'
+        measured_rotation = "Measured rotation speed:       " + str(rotateResult) + "rad/s\n\n"
+        measured_time = "Measured run time:                   " + str(timeResult) + "sec."
+        self.measuredText = customtkinter.CTkTextbox(master=self.tab("Measured Results"))
+        self.measuredText.pack(fill='both', padx=10, pady=10)
+        self.measuredText.insert("0.0", measured_freq + measured_force + measured_rotation + measured_time)
 
-        #Make plots
-        # Make plots
-        fig = Figure(figsize=(8, 8))  # Frequency plot
-        freqPlot = fig.add_subplot(111)
-        x = np.arange(0.0, 3.0, 0.01)
-        y = np.sin(np.pi * x)
-        freqPlot.plot(x, y)
+        # Frequency plot
+        freqFig = Figure(figsize=(8, 5))  # Frequency plot
+        freqPlot = freqFig.add_subplot(111)
+        # t = np.arange(0.0, 3.0, 0.01)
+        # freqMeasures = np.sin(np.pi * t)+80
+        #maxFreq = max(freqMeasures)
+        freqPlot.axhline(y=maxFreq, color='r', linestyle='--')
+        freqPlot.annotate(str(maxFreq), xy=(t[-1], maxFreq), xytext=(20,0), color='r',
+                          textcoords="offset points", va='center')
+        freqPlot.plot(t, freqMeasures)
         freqPlot.set(xlabel='Time [sec.]', ylabel='Freq. [Hz]')
 
-        canvas = FigureCanvasTkAgg(fig, master=self.tab("Freq. Results"))
-        canvas.draw()
-        canvas.get_tk_widget().pack(fill='both', padx=10, pady=10)
+        freqCanvas = FigureCanvasTkAgg(freqFig, master=self.tab("Freq. Results"))
+        freqCanvas.draw()
+        freqCanvas.get_tk_widget().pack(fill='both', padx=10, pady=10)
 
-        #Add plots
+        #Force plot
+        forceFig = Figure(figsize=(5,5))
+        forcePlot = forceFig.add_subplot(111)
+        #forceMeasures = np.cos(np.pi * t)+150
+        #maxForce = max(forceMeasures)
+        forcePlot.axhline(y=maxForce, color='r', linestyle='--')
+        forcePlot.annotate(str(maxForce), xy=(t[-1], maxForce), xytext=(20, 0), color='r',
+                          textcoords="offset points", va='center')
+        forcePlot.plot(t, forceMeasures)
+        forcePlot.set(xlabel='Time [sec.]', ylabel='Force [N]')
 
+        forceCanvas = FigureCanvasTkAgg(forceFig, master=self.tab("Force Results"))
+        forceCanvas.draw()
+        forceCanvas.get_tk_widget().pack(fill='both', padx=10, pady=10)
 
-class ToplevelWindow(customtkinter.CTkToplevel):
+        #Rotation plot
+        #Derive data to find frequency of direction change
+        rotationFig = Figure(figsize=(5, 5))
+        rotationPlot = rotationFig.add_subplot(111)
+        #rotationMeasures = 9.8*np.sin(np.pi * t*5)
+        #maxRotation = max(rotationMeasures)
+        rotationPlot.axhline(y=maxRotation, color='r', linestyle='--')
+        rotationPlot.annotate(str(maxRotation), xy=(t[-1], maxForce), xytext=(20, 0), color='r',
+                           textcoords="offset points", va='center')
+        rotationPlot.plot(t, rotationMeasures)
+        rotationPlot.set(xlabel='Time [sec.]', ylabel='Speed [rad/s]')
+
+        rotationCanvas = FigureCanvasTkAgg(rotationFig, master=self.tab("Rot. Speed Results"))
+        rotationCanvas.draw()
+        rotationCanvas.get_tk_widget().pack(fill='both', padx=10, pady=10)
+
+class ProcessResults(customtkinter.CTkToplevel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.geometry("600x500")
+        self.title("Process Results")   #Change to Filename
+        self.geometry("700x500")
         # self.grid_columnconfigure(0, weight=1)
         # self.grid_rowconfigure(0, weight=1)
         # self.resultsWindowFrame = customtkinter.CTkFrame(master=self)
@@ -113,10 +155,10 @@ class App(customtkinter.CTk):
         super().__init__()
 
         self.title("AutoLiv Generant Compaction Station Control")
-        self.geometry(f"{1366}x{768}")
+        self.geometry(f"{1100}x{600}")
 
         # Grid Layout
-        self.grid_columnconfigure((1, 2), weight=1)
+        self.grid_columnconfigure((1, 2), weight=0)
         self.grid_rowconfigure((0, 1, 2, 3), weight=0)
 
         # Radiobuttons
@@ -217,12 +259,13 @@ class App(customtkinter.CTk):
         self.timeLabel.grid(row=4, column=4, padx=(0, 10), pady=(30, 20), sticky='e')
 
         # File Name Frame
-        self.filename_frame = customtkinter.CTkFrame(self)
-        self.filename_frame.grid(row=0, column=1, rowspan=1, columnspan=1, padx=(20, 0), pady=(20, 0), sticky="nsew")
+        self.filename_frame = customtkinter.CTkFrame(self, width=100)
+        self.filename_frame.grid(row=0, column=1, rowspan=1, padx=(20, 0), pady=(20, 0), sticky="nsew")
         self.results_var = tkinter.IntVar(value=0)
 
-        self.filenameEntry = customtkinter.CTkEntry(master=self.filename_frame, placeholder_text='File_Name.csv',
-                                                    validate='focusout', validatecommand=self.checkFilename, width=300, height=30)
+        self.filenameEntry = customtkinter.CTkEntry(master=self.filename_frame, placeholder_text='File_Name',
+                                                    validate='focusout', width=200, height=30,
+                                                    validatecommand=self.checkFilename)
         self.filenameEntry.grid(row=1, column=0, padx=10, pady=(5, 20), sticky='nsew', columnspan=2)
         self.filenameLabel = customtkinter.CTkLabel(self.filename_frame, text='File Name', font=('CTkFont', 15))
         self.filenameLabel.grid(row=0, column=0, padx=10, pady=(20, 5), sticky='sw')
@@ -234,51 +277,54 @@ class App(customtkinter.CTk):
                                                              variable=self.saveData_var, value=1, command=self.saveFile)
         self.fileButtonNoSave.grid(row=2, column=1, padx=10, pady=(10, 20), sticky='nw')
 
-        #Results Frame
-        self.results_frame = customtkinter.CTkFrame(self)
-        self.results_frame.grid_columnconfigure((0,1), weight=0)
-        self.results_frame.grid_rowconfigure((0, 1), weight=0)
-        self.results_frame.grid(row=1, column=1, rowspan=1, columnspan=1, padx=(20, 0), pady=(20, 0), sticky="nsew")
-        self.resultsFrameLabel = customtkinter.CTkLabel(master=self.results_frame, text='Measured Results Printout', font=('CTkFont', 15))
-        self.resultsFrameLabel.grid(row=0, column=1, padx=5, pady=(10,20), sticky='ew')
+        #Program Info Frame
+        self.info_frame = customtkinter.CTkFrame(self)
+        self.info_frame.grid(row=1, column=1, padx=(20, 0), pady=(20, 0), sticky="nsew")
 
-        measured_freq = 'Measured frequency:           ' + str(freqResult) + 'Hz\n'
-        # self.resultsLabel_freq = customtkinter.CTkLabel(master=self.results_frame, text=measured_freq)
-        # self.resultsLabel_freq.grid(row=1, column=0, padx=5, pady=10, sticky='nw')
-        #
-        measured_force = 'Measured force:                    ' + str(forceResult) + 'N\n'
-        # self.resultsLabel_force = customtkinter.CTkLabel(master=self.results_frame, text=measured_force)
-        # self.resultsLabel_force.grid(row=2, column=0, padx=5, pady=10, sticky='nw')
-        #
-        measured_rotation = "Measured rotation speed:   " + str(rotateResult) + "rad/s\n"
-        # self.resultsLabel_rotate = customtkinter.CTkLabel(master=self.results_frame, text=measured_rotation)
-        # self.resultsLabel_rotate.grid(row=3, column=0, padx=5, pady=10, sticky='nw')
-        #
-        measured_time = "Measured run time:               " + str(timeResult) + "sec."
-        # self.resultsLabel_runTime = customtkinter.CTkLabel(master=self.results_frame, text=measured_time)
-        # self.resultsLabel_runTime.grid(row=4, column=0, padx=5, pady=10, sticky='nw')
 
-        #Print Results Using Text Box
-        self.resultsFrameText = customtkinter.CTkTextbox(master=self.results_frame, width=250)
-        self.resultsFrameText.grid(row=1, column=0, padx=10, pady=10)
-        self.resultsFrameText.insert("0.0", measured_freq+measured_force+measured_rotation+measured_time)
+        #Print Program Info Using Text Box
+        programInfo = '1) Select Cam amplitude (in mm)\n' \
+                      '     *This will automatically set bounds for frequencies .....\n\n' \
+                      "2) Select which subsystems to enable using checkboxes\n" \
+                      "     Vibration: Enables motor to run at desired frequency (in Hz),\n" \
+                      "                        inducing vibration of the module\n" \
+                      "     Compaction: Enables pneumatic piston to apply vertical \n" \
+                      "                              compression force (in N) to the generant\n" \
+                      "     Rotation: Enables servo motor to rotate module at ___rad/s in a \n" \
+                      "                      fixed direction\n" \
+                      "                      *Adjusting the rotation frequency (in Hz) will change the \n" \
+                      "                      rotation direction at the desired rate\n" \
+                      "     Run Time: Enables the user to select a desired run time (in sec.)\n" \
+                      "                         *With 'Run Time' disabled, the system will run until the \n" \
+                      "                          'STOP' button is selected\n\n" \
+                      "3) Select if the user would like to save the data\n" \
+                      "      *If data is to be saved, enter a filename and measured results \n" \
+                      "        will be saved as a .xlsx file\n" \
+                      "      *If data is not to be saved, measured results will be displayed \n" \
+                      "        without saving and filename may be ignored\n\n" \
+                      "4) Once desired variables are entered, select the 'RUN' button to run \n" \
+                      "      the system. \n" \
+                      "      *Once the desired time is reached,\n" \
+                      "        or the 'STOP' button is selected, the measured results will be \n" \
+                      "        displayed and the data will be saved, if enabled\n"
 
-        #Results plots tabs
-        #self.tab_view = ResultsTab(master=self.results_frame)
-        #self.tab_view.grid(row=1, column=2, rowspan=4, padx=10, pady=10, sticky='nw')
+        self.infoFrameText = customtkinter.CTkTextbox(master=self.info_frame, height=250)
+        self.infoFrameText.pack(fill='both', padx=10, pady=5)
+        self.infoFrameText.insert(0.0, programInfo)
+        self.infoFrameText.configure(state='disabled')
 
         #Run/Stop Button
         self.button_frame = customtkinter.CTkFrame(self, fg_color='transparent')
-        self.button_frame.grid(row=3, column=1, columnspan=2, padx=10, pady=10)
-        self.runButton = customtkinter.CTkButton(master=self.button_frame, width=250, height=100, corner_radius=25, fg_color='green',
+        self.button_frame.grid(row=3, column=1, columnspan=1, padx=10, pady=10)
+        self.runButton = customtkinter.CTkButton(master=self.button_frame, width=225, height=75, corner_radius=25, fg_color='green',
                                                  border_color='#006400', hover_color='#228B22', border_width=5, font=('CTkFont', 20),
                                                  text='RUN', command=self.runButtonFunc)
-        self.runButton.grid(row=3, column=1, padx=10, pady=10, sticky='nw')
+        self.runButton.grid(row=3, column=1, padx=(25, 10), pady=0, sticky='sw')
 
-        self.stopButton = customtkinter.CTkButton(master=self.button_frame, width=250, height=100, corner_radius=25, fg_color='#EE2C2C',
+        self.stopButton = customtkinter.CTkButton(master=self.button_frame, width=225, height=75, corner_radius=25, fg_color='#EE2C2C',
                                                   border_color='#B22222', hover_color='#FF3030', border_width=5, font=('CTkFont', 20),
                                                   text='STOP', command=self.stopButtonFunc, state='disabled')
-        self.stopButton.grid(row=3, column=2, padx=10, pady=10, sticky='nw')
+        self.stopButton.grid(row=3, column=2, padx=10, pady=0, sticky='se')
 
         self.resultsWindow = None
     # Functions to set bounds due to amplitude
@@ -321,12 +367,63 @@ class App(customtkinter.CTk):
         print('rotSpeedBounds:[' + str(rotSpeedBounds[0]) + ', ' + str(rotSpeedBounds[1]) + ']\n')
 
     def saveFile(self):
-        global fileName
-        saveData_var = self.saveData_var.get()
-        if saveData_var == 0:
-            fileName = fileNameEntry.get()
-        else:
+        fileNameValid = self.checkFilename()
+        if self.saveData_var.get() == 0:
+            if fileNameValid:
+                fileName = self.filenameEntry.get()
+                wb = Workbook()
+                wb.save(str(fileName)+'.xlsx')
+                sheet = wb.active
+                #Initialize sheet labels
+                sheet.row_dimensions[2].height = 27
+                sheet.column_dimensions['C'].width = 11
+                sheet.column_dimensions['E'].width = 10
+
+                sheet['D2'].value = 'Settings'
+                sheet['E2'] = 'Max\nMeasured'
+                sheet['E2'].alignment = Alignment(wrapText=True)
+                sheet['C3'].value = 'Freq.'
+                sheet['C4'].value = 'Force'
+                sheet['C5'].value = 'Rot. Freq'
+                sheet['C6'].value = 'Time'
+                sheet['F3'].value = 'Hz'
+                sheet['F4'].value = 'N'
+                sheet['F5'].value = 'Hz'
+                sheet['F6'].value = 'Sec'
+                sheet['C8'].value = 'Freq.'
+                sheet['C9'].value = 'Force'
+                sheet['C10'].value = 'Rot. Speed'
+                sheet['C11'].value = 'Time'
+
+                #Insert values into sheet
+                sheet['D3'].value = float(self.freqEntry.get())
+                sheet['D4'].value = float(self.forceEntry.get())
+                sheet['D5'].value = float(self.rotateEntry.get())
+                sheet['D6'].value = float(self.timeEntry.get())
+                sheet['E3'].value = maxFreq
+                sheet['E4'].value = maxForce
+                sheet['E5'].value = maxRotation
+                sheet['E6'].value = maxTime
+
+                for i in range(len(freqMeasures)):
+                    sheet.cell(row=8, column=i+4).value = freqMeasures[i]
+
+                for i in range(len(forceMeasures)):
+                    sheet.cell(row=9, column=i+4).value = forceMeasures[i]
+
+                for i in range(len(rotationMeasures)):
+                    sheet.cell(row=10, column=i+4).value = rotationMeasures[i]
+
+                for i in range(len(t)):
+                    sheet.cell(row=11, column=i+4).value = t[i]
+                wb.save(str(fileName)+'.xlsx')
+            else:
+                print('Invalid filename')
+        elif self.saveData_var == 1:
             print("Not Saving Data")
+
+        else:
+            print('Error with save data radio buttons')
 
 
     # Functions to disable sliders and entry boxes when related function is not enabled by the user
@@ -503,13 +600,20 @@ class App(customtkinter.CTk):
             return True
 
     def checkFilename(self):
-        return True
+        filename = self.filenameEntry.get()
+        if not re.findall(r'[^A-Za-z0-9_\-\\]', filename):
+            if re.findall(r'[^0-9_\-\\]', filename[0]):
+                fileNameValid = True
+            else:
+                fileNameValid = False
+        else:
+            fileNameValid = False
+        return fileNameValid
 
     def runButtonFunc(self):
         #Start all subsystems
         self.runButton.configure(state='disabled')
         self.stopButton.configure(state='normal', hover=True)
-        self.sendToClearcore()
         return
 
     def stopButtonFunc(self):
@@ -517,18 +621,16 @@ class App(customtkinter.CTk):
         self.stopButton.configure(state='disabled')
         self.runButton.configure(state='normal', hover=True)
         self.openResultsWindow()
+        self.saveFile()
         return
 
     def openResultsWindow(self):
         if self.resultsWindow is None or not self.resultsWindow.winfo_exists():
-            self.resultsWindow = ToplevelWindow(self)
+            self.resultsWindow = ProcessResults(self)
             self.resultsWindow.focus()
 
         else:
             self.resultsWindow.focus()
-
-    def sendToClearcore(self):
-        clearcore.write(str.encode("Freq:"+str(freqVal)+",Force:"+str(forceVal)+",Rotate:"+str(ifRotate)+",Oscilate:,"+str(oscilFreq))) #Need another comma to end string?
 
 
 
