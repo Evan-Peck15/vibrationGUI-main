@@ -8,6 +8,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment
 import time
 import re
+import serial
 
 
 
@@ -55,6 +56,9 @@ freqResult = 75
 forceResult = 250
 rotateResult = 9.81
 timeResult = 5
+
+clearcoreResults = None
+clearcore = serial.Serial('COM3', 9600)
 
 #Temp measurements
 t = np.arange(0.0, 3.0, 0.01)
@@ -614,14 +618,16 @@ class App(customtkinter.CTk):
         #Start all subsystems
         self.runButton.configure(state='disabled')
         self.stopButton.configure(state='normal', hover=True)
-        return
+        self.sendToClearcore()
+        self.checkSerial()
 
     def stopButtonFunc(self):
         #Stop all subsystems
         self.stopButton.configure(state='disabled')
         self.runButton.configure(state='normal', hover=True)
-        self.openResultsWindow()
-        self.saveFile()
+        clearcore.write(str.encode("STOP"))
+
+        
         return
 
     def openResultsWindow(self):
@@ -632,7 +638,62 @@ class App(customtkinter.CTk):
         else:
             self.resultsWindow.focus()
 
+    def sendToClearcore(self):
 
+        if self.vibButton.get() == 1:
+            setFreq = self.freqEntry.get()
+        else:
+            setFreq = 0
+        if self.compactButton.get() == 1:
+            setForce = self.forceEntry.get()
+        else:
+            setForce = 0
+        if self.rotateButton.get() == 1:
+            setRotation = self.rotateEntry.get()
+        else:
+            setRotation = 0
+        if self.timeButton.get() == 1:
+            setTime = self.timeEntry.get()
+        else:
+            setTime = 0
+        sendComm = 'Freq:' + str(setFreq) + ',Force:' + str(setForce) + ',Rotation:' + str(setRotation) + \
+                   ',Time:' + str(setTime)
+        clearcore.write(str.encode(sendComm))
+
+    def readData(self):
+        global freqDataRecieved, forceDataRecieved, timeDataRecieved
+        recievedData = clearcore.read(str.decode())
+        splitData = recievedData.split("\n")    #String format "Freq:12,23,34\nForce:12,23,34\n"
+        for i in range(0, len(splitData)):
+            text = splitData[i]
+            text = text.split(":")
+
+            if text[0] == "Freq":
+                freqDataRecieved = text[1].split(",")
+                for j in range(0, len(freqDataRecieved)):
+                    freqDataRecieved[j] = float(freqDataRecieved[j])
+            elif text[0] == "Force":
+                forceDataRecieved = text[1].split(",")
+                for j in range(0, len(forceDataRecieved)):
+                    forceDataRecieved[j] = float(forceDataRecieved[j])
+            elif text[0] == "Time":
+                timeDataRecieved = text[1].split(",")
+                for j in range(0, len(timeDataRecieved)):
+                    timeDataRecieved[j] = float(timeDataRecieved[j])
+
+    def checkSerial(self):
+        if clearcore.inWaiting() > 0:
+                #clearcoreResults = clearcore.read(clearcore.inWaiting()).decode()
+                self.finishTest()
+        global app
+        app.after(100, self.checkSerial)
+    
+    def finishTest(self):
+        self.stopButton.configure(state='disabled')
+        self.runButton.configure(state='normal', hover=True)
+        self.readData()
+        self.openResultsWindow()
+        self.saveFile()
 
 if __name__ == "__main__":
     app = App()
