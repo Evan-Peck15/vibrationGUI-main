@@ -14,7 +14,7 @@ void receive_comm() {
   else if (incomingString == "Time"){
     switcher_var == 3;
   }
-  else if(incomingString == "Go"){
+  else if(incomingString == "GO"){
     switcher_var = 4;
   }
   else if(incomingString == "STOP"){

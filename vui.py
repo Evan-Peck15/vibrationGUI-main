@@ -21,7 +21,6 @@ import serial
 ##########################
 
 ###### NOTES ########
-# Save values as variables
 # Add AutoLiv and UofU images
 # Get feedback on color pallet?
 # Add opening window w/ images, manual/automatic
@@ -58,7 +57,7 @@ rotateResult = 9.81
 timeResult = 5
 
 clearcoreResults = None
-clearcore = serial.Serial('COM3', 9600)
+# clearcore = serial.Serial('COM3', 9600)               #UNCOMMENT ****************************************************************************************
 
 #Temp measurements
 t = np.arange(0.0, 3.0, 0.01)
@@ -86,7 +85,7 @@ class ResultsTab(customtkinter.CTkTabview):
         #Insert results in tabs
         measured_freq = 'Measured frequency:               ' + str(freqResult) + 'Hz\n\n'
         measured_force = 'Measured force:                        ' + str(forceResult) + 'N\n\n'
-        measured_rotation = "Measured rotation speed:       " + str(rotateResult) + "rad/s\n\n"
+        measured_rotation = "Measured rotation frequency:       " + str(rotateResult) + "Hz\n\n"
         measured_time = "Measured run time:                   " + str(timeResult) + "sec."
         self.measuredText = customtkinter.CTkTextbox(master=self.tab("Measured Results"))
         self.measuredText.pack(fill='both', padx=10, pady=10)
@@ -237,11 +236,11 @@ class App(customtkinter.CTk):
                                                       command=self.rotateToggle, onvalue=1, offvalue=0)
         self.rotateButton.grid(row=3, column=0, padx=(10, 10), pady=(30, 30))
 
-        self.rotateEntry = customtkinter.CTkEntry(self.slide_frame, placeholder_text="rad/s", state="disabled",
+        self.rotateEntry = customtkinter.CTkEntry(self.slide_frame, placeholder_text="Hz", state="disabled",
                                                   validate='focusout', validatecommand=self.checkRotateEntry, width=50)
         self.rotateEntry.grid(row=3, column=3, padx=(10, 10), pady=(30, 30), sticky='w')
 
-        self.rotateLabel = customtkinter.CTkLabel(self.slide_frame, text="rad/s")
+        self.rotateLabel = customtkinter.CTkLabel(self.slide_frame, text="Hz")
         self.rotateLabel.grid(row=3, column=4, padx=(0, 10), pady=(30, 30), sticky='e')
 
         # Run Time
@@ -273,13 +272,13 @@ class App(customtkinter.CTk):
         self.filenameEntry.grid(row=1, column=0, padx=10, pady=(5, 20), sticky='nsew', columnspan=2)
         self.filenameLabel = customtkinter.CTkLabel(self.filename_frame, text='File Name', font=('CTkFont', 15))
         self.filenameLabel.grid(row=0, column=0, padx=10, pady=(20, 5), sticky='sw')
-        self.saveData_var = tkinter.IntVar(value=0)
-        self.fileButtonSave = customtkinter.CTkRadioButton(master=self.filename_frame, text="Save Data",
-                                                           variable=self.saveData_var, value=0, command=self.saveFile)
-        self.fileButtonSave.grid(row=2, column=0, padx=15, pady=(10, 20), sticky='nw')
+        self.saveData_var = tkinter.IntVar(value=1)
         self.fileButtonNoSave = customtkinter.CTkRadioButton(master=self.filename_frame, text="Run Without Saving",
                                                              variable=self.saveData_var, value=1, command=self.saveFile)
-        self.fileButtonNoSave.grid(row=2, column=1, padx=10, pady=(10, 20), sticky='nw')
+        self.fileButtonNoSave.grid(row=2, column=0, padx=10, pady=(10, 20), sticky='nw')
+        self.fileButtonSave = customtkinter.CTkRadioButton(master=self.filename_frame, text="Save Data",
+                                                           variable=self.saveData_var, value=0, command=self.saveFile)
+        self.fileButtonSave.grid(row=2, column=1, padx=15, pady=(10, 20), sticky='nw')
 
         #Program Info Frame
         self.info_frame = customtkinter.CTkFrame(self)
@@ -288,13 +287,13 @@ class App(customtkinter.CTk):
 
         #Print Program Info Using Text Box
         programInfo = '1) Select Cam amplitude (in mm)\n' \
-                      '     *This will automatically set bounds for frequencies .....\n\n' \
+                      '     *This will automatically set bounds for allowable frequencies\n\n' \
                       "2) Select which subsystems to enable using checkboxes\n" \
                       "     Vibration: Enables motor to run at desired frequency (in Hz),\n" \
                       "                        inducing vibration of the module\n" \
                       "     Compaction: Enables pneumatic piston to apply vertical \n" \
                       "                              compression force (in N) to the generant\n" \
-                      "     Rotation: Enables servo motor to rotate module at ___rad/s in a \n" \
+                      "     Rotation: Enables servo motor to rotate the module in a \n" \
                       "                      fixed direction\n" \
                       "                      *Adjusting the rotation frequency (in Hz) will change the \n" \
                       "                      rotation direction at the desired rate\n" \
@@ -303,7 +302,7 @@ class App(customtkinter.CTk):
                       "                          'STOP' button is selected\n\n" \
                       "3) Select if the user would like to save the data\n" \
                       "      *If data is to be saved, enter a filename and measured results \n" \
-                      "        will be saved as a .xlsx file\n" \
+                      "        will be saved as aN .xlsx file\n" \
                       "      *If data is not to be saved, measured results will be displayed \n" \
                       "        without saving and filename may be ignored\n\n" \
                       "4) Once desired variables are entered, select the 'RUN' button to run \n" \
@@ -553,7 +552,7 @@ class App(customtkinter.CTk):
         else:                                                       #If entry is not numeric or out of freqBounds, print an error with the proper bounds
             self.rotateEntry.delete(0, len(self.rotateEntry.get()))
             print('Invalid rotation speed')
-            print('Enter a value between ' + str(rotSpeedBounds[0]) + ' and ' + str(rotSpeedBounds[1]) + 'rad/s')
+            print('Enter a value between ' + str(rotSpeedBounds[0]) + ' and ' + str(rotSpeedBounds[1]) + 'Hz')
             return False
 
     def checkRotateSlider(self, second):                              #When the freqSlider is changed, update the freqEntry box to match
@@ -643,21 +642,21 @@ class App(customtkinter.CTk):
         if self.vibButton.get() == 1:
             setFreq = self.freqEntry.get()
         else:
-            setFreq = 0
+            setFreq = 999
         if self.compactButton.get() == 1:
             setForce = self.forceEntry.get()
         else:
-            setForce = 0
+            setForce = 999
         if self.rotateButton.get() == 1:
             setRotation = self.rotateEntry.get()
         else:
-            setRotation = 0
+            setRotation = 999
         if self.timeButton.get() == 1:
             setTime = self.timeEntry.get()
         else:
-            setTime = 0
+            setTime = 999
         sendComm = 'Freq:' + str(setFreq) + ',Force:' + str(setForce) + ',Rotation:' + str(setRotation) + \
-                   ',Time:' + str(setTime)
+                   ',Time:' + str(setTime) + ',GO:'
         clearcore.write(str.encode(sendComm))
 
     def readData(self):

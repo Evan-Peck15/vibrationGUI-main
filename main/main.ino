@@ -29,6 +29,16 @@ int switcher_var;
 bool test_start  false;
 bool test_stop = false;
 
+float freqResults[];
+float forceResults[];
+float heightResults[];
+float timeResults[];
+
+// initialize time variables
+int T = micros();
+int startTime;
+
+
 void setup() {
 
   Serial.begin(9600);

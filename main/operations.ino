@@ -12,9 +12,21 @@ void operations(){
 // Turns on subsystems and runs test
   if (test_start == true && reed == true){
     test_start = false;
+    k=0;
     // Turn on systems
+
+    // Turn on piston
+    // Turn on rotation motor
+    
     // Start tracking time
+    startTime = micros();
   }
+
+ if (runTime < endTime){
+  //Save results
+  // heightResults[k] = height.get();
+  //k++;
+ }
 
 // Check stop conditions (STOP command received, time limit reached or reed switch is opened
 // If either condition is met, stop ALL subsystems
